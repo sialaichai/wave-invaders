@@ -1,0 +1,242 @@
+/* Wave Invaders - Game Styles */
+
+/* Retro glow effects */
+.invader-shape {
+  filter: drop-shadow(0 0 4px currentColor);
+  transition: transform 0.1s ease;
+}
+
+.invader-shape:hover {
+  transform: scale(1.05);
+}
+
+/* Game canvas animations */
+@keyframes pulse-glow {
+  0%, 100% {
+    box-shadow: 0 0 10px rgba(0, 255, 255, 0.5);
+  }
+  50% {
+    box-shadow: 0 0 20px rgba(0, 255, 255, 0.8);
+  }
+}
+
+/* Bullet trail effect */
+.bullet-trail {
+  position: absolute;
+  pointer-events: none;
+  background: linear-gradient(to top, transparent, currentColor);
+  opacity: 0.5;
+}
+
+/* Particle explosion */
+@keyframes explode {
+  0% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(2);
+    opacity: 0;
+  }
+}
+
+/* Screen shake effect for hits */
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  10% { transform: translateX(-5px); }
+  20% { transform: translateX(5px); }
+  30% { transform: translateX(-5px); }
+  40% { transform: translateX(5px); }
+  50% { transform: translateX(-3px); }
+  60% { transform: translateX(3px); }
+  70% { transform: translateX(-2px); }
+  80% { transform: translateX(2px); }
+  90% { transform: translateX(-1px); }
+}
+
+.shake {
+  animation: shake 0.5s ease-in-out;
+}
+
+/* Level indicator animation */
+@keyframes level-up {
+  0% {
+    transform: scale(1);
+    filter: brightness(1);
+  }
+  50% {
+    transform: scale(1.2);
+    filter: brightness(2);
+  }
+  100% {
+    transform: scale(1);
+    filter: brightness(1);
+  }
+}
+
+.level-up-animation {
+  animation: level-up 0.5s ease-out;
+}
+
+/* Score popup animation */
+@keyframes score-popup {
+  0% {
+    transform: translateY(0) scale(1);
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(-50px) scale(1.5);
+    opacity: 0;
+  }
+}
+
+.score-popup {
+  animation: score-popup 1s ease-out forwards;
+}
+
+/* Retro scanline overlay */
+.scanlines::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: repeating-linear-gradient(
+    0deg,
+    rgba(0, 0, 0, 0.1),
+    rgba(0, 0, 0, 0.1) 1px,
+    transparent 1px,
+    transparent 2px
+  );
+  pointer-events: none;
+  z-index: 10;
+}
+
+/* CRT flicker effect */
+@keyframes flicker {
+  0% { opacity: 0.97; }
+  5% { opacity: 0.95; }
+  10% { opacity: 0.9; }
+  15% { opacity: 0.95; }
+  20% { opacity: 0.99; }
+  50% { opacity: 0.95; }
+  80% { opacity: 0.9; }
+  100% { opacity: 0.97; }
+}
+
+.crt-flicker {
+  animation: flicker 0.15s infinite;
+}
+
+/* Button hover glow */
+button:hover {
+  box-shadow: 0 0 15px rgba(0, 255, 255, 0.5);
+}
+
+/* Quiz option hover */
+.quiz-option:hover {
+  background: rgba(0, 255, 255, 0.1);
+  border-color: rgba(0, 255, 255, 0.5);
+}
+
+/* Health bar animation */
+@keyframes health-pulse {
+  0%, 100% {
+    box-shadow: 0 0 5px rgba(255, 0, 0, 0.5);
+  }
+  50% {
+    box-shadow: 0 0 15px rgba(255, 0, 0, 0.8);
+  }
+}
+
+.health-low {
+  animation: health-pulse 1s infinite;
+}
+
+/* Star twinkle */
+@keyframes twinkle {
+  0%, 100% {
+    opacity: 0.3;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+.star {
+  animation: twinkle 2s infinite;
+}
+
+/* Invader movement bob */
+@keyframes bob {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-3px);
+  }
+}
+
+.invader-bob {
+  animation: bob 0.5s ease-in-out infinite;
+}
+
+/* Wave animation for background */
+@keyframes wave {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+.wave-bg {
+  animation: wave 10s linear infinite;
+}
+
+/* Confetti colors override */
+.confetti-color-1 { background-color: #00ff00 !important; }
+.confetti-color-2 { background-color: #00ffff !important; }
+.confetti-color-3 { background-color: #ff00ff !important; }
+.confetti-color-4 { background-color: #ffff00 !important; }
+
+/* Responsive adjustments */
+@media (max-width: 840px) {
+  .game-canvas {
+    transform: scale(0.9);
+    transform-origin: center top;
+  }
+}
+
+@media (max-width: 640px) {
+  .game-canvas {
+    transform: scale(0.7);
+    transform-origin: center top;
+  }
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #0f172a;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #06b6d4;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #0891b2;
+}
+
+/* Selection color */
+::selection {
+  background: rgba(6, 182, 212, 0.3);
+  color: white;
+}
