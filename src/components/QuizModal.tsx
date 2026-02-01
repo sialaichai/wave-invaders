@@ -1,137 +1,155 @@
 import { useState } from 'react';
-import type { Question } from '@/types/game';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { CheckCircle, XCircle, HelpCircle } from 'lucide-react';
+import { Check, X, HelpCircle } from 'lucide-react';
+import type { Question } from '../types/game';
+import confetti from 'canvas-confetti';
 
 interface QuizModalProps {
   question: Question;
-  onAnswer: (answer: string) => void;
+  onAnswer: (correct: boolean) => void;
 }
 
-export const QuizModal: React.FC<QuizModalProps> = ({ question, onAnswer }) => {
-  const [selectedAnswer, setSelectedAnswer] = useState<string>('');
-  const [numericalAnswer, setNumericalAnswer] = useState<string>('');
-  const [showResult, setShowResult] = useState<boolean>(false);
-  const [isCorrect, setIsCorrect] = useState<boolean>(false);
+export function QuizModal({ question, onAnswer }: QuizModalProps) {
+  const [selectedAnswer, setSelectedAnswer] = useState<number | null>(null);
+  const [showResult, setShowResult] = useState(false);
+  const [isCorrect, setIsCorrect] = useState(false);
+
+  const handleSelect = (index: number) => {
+    if (showResult) return;
+    setSelectedAnswer(index);
+  };
 
   const handleSubmit = () => {
-    const answer = question.type === 'mcq' ? selectedAnswer : numericalAnswer;
+    if (selectedAnswer === null) return;
     
-    if (!answer) return;
-    
-    const correct = question.type === 'calculation' 
-      ? Math.abs(parseFloat(answer) - parseFloat(question.correctAnswer)) <= (question.tolerance || 0)
-      : answer === question.correctAnswer;
-    
+    const correct = selectedAnswer === question.correctAnswer;
     setIsCorrect(correct);
     setShowResult(true);
-    
+
+    if (correct) {
+      confetti({
+        particleCount: 100,
+        spread: 70,
+        origin: { y: 0.6 },
+        colors: ['#00ff00', '#00ffff', '#ffff00'],
+      });
+    }
+
     setTimeout(() => {
-      onAnswer(answer);
+      onAnswer(correct);
     }, 2000);
   };
 
-  const formatNumber = (num: string) => {
-    const n = parseFloat(num);
-    if (n >= 1000) return n.toExponential(2);
-    if (n < 0.001 && n > 0) return n.toExponential(2);
-    return parseFloat(num).toFixed(3).replace(/\.?0+$/, '');
+  const getDifficultyColor = (difficulty: string) => {
+    switch (difficulty) {
+      case 'easy':
+        return 'text-green-400';
+      case 'medium':
+        return 'text-yellow-400';
+      case 'hard':
+        return 'text-red-400';
+      default:
+        return 'text-gray-400';
+    }
   };
 
   return (
-    <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
-      <Card className="w-full max-w-2xl bg-slate-900 border-cyan-500/50">
-        <CardHeader>
-          <CardTitle className="text-2xl text-center text-cyan-400 flex items-center justify-center gap-2">
-            <HelpCircle className="w-6 h-6" />
-            Physics Challenge!
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-6">
-          {!showResult ? (
-            <>
-              <div className="text-lg text-white leading-relaxed">
-                {question.question}
-              </div>
-              
-              {question.type === 'mcq' && question.options && (
-                <div className="grid grid-cols-1 gap-3">
-                  {question.options.map((option, index) => (
-                    <button
-                      key={index}
-                      onClick={() => setSelectedAnswer(option)}
-                      className={`p-4 rounded-lg text-left transition-all ${
-                        selectedAnswer === option
-                          ? 'bg-cyan-600 text-white border-2 border-cyan-400'
-                          : 'bg-slate-800 text-slate-200 border-2 border-slate-700 hover:border-cyan-500/50'
-                      }`}
-                    >
-                      <span className="font-bold mr-2">{String.fromCharCode(65 + index)}.</span>
-                      {option}
-                    </button>
-                  ))}
-                </div>
-              )}
-              
-              {question.type === 'calculation' && (
-                <div className="space-y-4">
-                  <label className="text-slate-300 block">
-                    Enter your answer (numerical value):
-                  </label>
-                  <Input
-                    type="number"
-                    step="any"
-                    value={numericalAnswer}
-                    onChange={(e) => setNumericalAnswer(e.target.value)}
-                    placeholder="Type your answer..."
-                    className="bg-slate-800 border-slate-600 text-white text-lg py-6"
-                    onKeyDown={(e) => e.key === 'Enter' && handleSubmit()}
-                  />
-                  <p className="text-sm text-slate-400">
-                    Tip: Small numerical variations are accepted. Use scientific notation if needed (e.g., 2.5e-6)
-                  </p>
-                </div>
-              )}
-              
-              <Button
-                onClick={handleSubmit}
-                disabled={question.type === 'mcq' ? !selectedAnswer : !numericalAnswer}
-                className="w-full py-6 text-lg bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500"
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm">
+      <div className="relative w-full max-w-2xl mx-4 p-6 bg-gray-900 border-2 border-cyan-500 rounded-lg shadow-2xl">
+        {/* Header */}
+        <div className="flex items-center justify-between mb-6">
+          <div className="flex items-center gap-3">
+            <HelpCircle className="w-6 h-6 text-cyan-400" />
+            <span className="text-sm text-gray-400">Physics Quiz</span>
+          </div>
+          <div className="flex items-center gap-4">
+            <span className={`text-sm font-bold ${getDifficultyColor(question.difficulty)}`}>
+              {question.difficulty.toUpperCase()}
+            </span>
+            <span className="text-sm text-gray-500">{question.topic}</span>
+          </div>
+        </div>
+
+        {/* Question */}
+        <h3 className="text-xl font-bold text-white mb-6 leading-relaxed">
+          {question.question}
+        </h3>
+
+        {/* Options */}
+        <div className="space-y-3 mb-6">
+          {question.options.map((option, index) => {
+            let buttonClass = 'w-full p-4 text-left rounded-lg border-2 transition-all duration-200 ';
+            
+            if (showResult) {
+              if (index === question.correctAnswer) {
+                buttonClass += 'bg-green-900/50 border-green-500 text-green-100';
+              } else if (index === selectedAnswer && index !== question.correctAnswer) {
+                buttonClass += 'bg-red-900/50 border-red-500 text-red-100';
+              } else {
+                buttonClass += 'bg-gray-800 border-gray-700 text-gray-400';
+              }
+            } else {
+              if (selectedAnswer === index) {
+                buttonClass += 'bg-cyan-900/50 border-cyan-500 text-cyan-100';
+              } else {
+                buttonClass += 'bg-gray-800 border-gray-700 text-gray-300 hover:bg-gray-700 hover:border-gray-600';
+              }
+            }
+
+            return (
+              <button
+                key={index}
+                onClick={() => handleSelect(index)}
+                disabled={showResult}
+                className={buttonClass}
               >
-                Submit Answer
-              </Button>
-            </>
-          ) : (
-            <div className="text-center space-y-4 py-4">
-              {isCorrect ? (
-                <>
-                  <CheckCircle className="w-20 h-20 text-green-500 mx-auto animate-bounce" />
-                  <h3 className="text-3xl font-bold text-green-400">Correct! +100 Points</h3>
-                </>
-              ) : (
-                <>
-                  <XCircle className="w-20 h-20 text-red-500 mx-auto" />
-                  <h3 className="text-3xl font-bold text-red-400">Incorrect! -25 Points</h3>
-                </>
-              )}
-              
-              <div className="bg-slate-800 p-4 rounded-lg text-left">
-                <p className="text-slate-300 mb-2">
-                  <span className="font-bold text-cyan-400">Correct Answer:</span>{' '}
-                  {question.type === 'calculation' 
-                    ? formatNumber(question.correctAnswer)
-                    : question.correctAnswer}
-                </p>
-                <p className="text-slate-400 text-sm">
-                  <span className="font-bold">Explanation:</span> {question.explanation}
-                </p>
-              </div>
-            </div>
-          )}
-        </CardContent>
-      </Card>
+                <div className="flex items-center gap-3">
+                  <span className="w-8 h-8 flex items-center justify-center rounded-full bg-gray-700 text-sm font-bold">
+                    {String.fromCharCode(65 + index)}
+                  </span>
+                  <span>{option}</span>
+                  {showResult && index === question.correctAnswer && (
+                    <Check className="w-5 h-5 text-green-400 ml-auto" />
+                  )}
+                  {showResult && index === selectedAnswer && index !== question.correctAnswer && (
+                    <X className="w-5 h-5 text-red-400 ml-auto" />
+                  )}
+                </div>
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Explanation */}
+        {showResult && (
+          <div className={`p-4 rounded-lg mb-4 ${isCorrect ? 'bg-green-900/30 border border-green-500' : 'bg-red-900/30 border border-red-500'}`}>
+            <p className={`font-bold mb-2 ${isCorrect ? 'text-green-400' : 'text-red-400'}`}>
+              {isCorrect ? 'Correct!' : 'Incorrect!'}
+            </p>
+            <p className="text-gray-300 text-sm">{question.explanation}</p>
+          </div>
+        )}
+
+        {/* Submit Button */}
+        {!showResult && (
+          <button
+            onClick={handleSubmit}
+            disabled={selectedAnswer === null}
+            className={`w-full py-3 px-6 rounded-lg font-bold text-lg transition-all duration-200 ${
+              selectedAnswer !== null
+                ? 'bg-cyan-500 hover:bg-cyan-400 text-black arcade-btn'
+                : 'bg-gray-700 text-gray-500 cursor-not-allowed'
+            }`}
+          >
+            Submit Answer
+          </button>
+        )}
+
+        {/* Decorative corners */}
+        <div className="absolute top-0 left-0 w-4 h-4 border-t-2 border-l-2 border-cyan-500 -translate-x-1 -translate-y-1" />
+        <div className="absolute top-0 right-0 w-4 h-4 border-t-2 border-r-2 border-cyan-500 translate-x-1 -translate-y-1" />
+        <div className="absolute bottom-0 left-0 w-4 h-4 border-b-2 border-l-2 border-cyan-500 -translate-x-1 translate-y-1" />
+        <div className="absolute bottom-0 right-0 w-4 h-4 border-b-2 border-r-2 border-cyan-500 translate-x-1 translate-y-1" />
+      </div>
     </div>
   );
-};
+}

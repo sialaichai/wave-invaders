@@ -1,217 +1,163 @@
-import { useEffect, useState } from 'react';
-import confetti from 'canvas-confetti';
-import { useGame } from '@/hooks/useGame';
-import { GameCanvas } from '@/components/GameCanvas';
-import { GameUI, MenuScreen, GameOverScreen } from '@/components/GameUI';
-import { QuizModal } from '@/components/QuizModal';
-import { SoundEffects } from '@/components/SoundEffects';
-import './App.css';
+import { useState, useCallback, useEffect } from 'react';
+import { GameCanvas } from './components/GameCanvas';
+import { QuizModal } from './components/QuizModal';
+import { StartScreen } from './components/StartScreen';
+import { GameOverScreen } from './components/GameOverScreen';
+import { useGameState } from './hooks/useGameState';
+import { useSound } from './hooks/useSound';
+import { physicsQuestions } from './lib/questions';
+import type { Question } from './types/game';
 
 function App() {
-  const {
-    gameState,
-    setGameState,
-    player,
-    bullets,
-    invaders,
-    particles,
-    enemyBullets,
-    stats,
-    currentQuestion,
-    showConfetti,
-    gameWidth,
-    gameHeight,
-    startGame,
-    handleQuizAnswer
-  } = useGame();
-
-
+  const [gameStarted, setGameStarted] = useState(false);
+  const [showQuiz, setShowQuiz] = useState(false);
+  const [currentQuestion, setCurrentQuestion] = useState<Question | null>(null);
+  const [gameOver, setGameOver] = useState(false);
   
-  const [soundTriggers, setSoundTriggers] = useState({
-    shoot: false,
-    explosion: false,
-    correct: false,
-    wrong: false,
-    levelUp: false
-  });
+  const { 
+    gameState, 
+    startGame, 
+    pauseGame, 
+    resumeGame,
+    updateScore,
+    loseLife,
+    levelUp 
+  } = useGameState();
+  
+  const { playSound } = useSound();
 
-  // Trigger confetti on correct answer
-  useEffect(() => {
-    if (showConfetti) {
-      confetti({
-        particleCount: 100,
-        spread: 70,
-        origin: { y: 0.6 },
-        colors: ['#00ff00', '#00ffff', '#ff00ff', '#ffff00']
-      });
-      setSoundTriggers(prev => ({ ...prev, correct: true }));
-      setTimeout(() => setSoundTriggers(prev => ({ ...prev, correct: false })), 100);
-    }
-  }, [showConfetti]);
-
-  // Track bullet firing for sound
-  useEffect(() => {
-    if (bullets.length > 0) {
-      setSoundTriggers(prev => ({ ...prev, shoot: true }));
-      setTimeout(() => setSoundTriggers(prev => ({ ...prev, shoot: false })), 100);
-    }
-  }, [bullets.length]);
-
-  // Track explosions for sound
-  useEffect(() => {
-    if (particles.length > 0) {
-      setSoundTriggers(prev => ({ ...prev, explosion: true }));
-      setTimeout(() => setSoundTriggers(prev => ({ ...prev, explosion: false })), 100);
-    }
-  }, [particles.length]);
-
-  // Track level changes for sound
-  useEffect(() => {
-    if (stats.level > 1 && gameState === 'playing') {
-      setSoundTriggers(prev => ({ ...prev, levelUp: true }));
-      setTimeout(() => setSoundTriggers(prev => ({ ...prev, levelUp: false })), 100);
-    }
-  }, [stats.level, gameState]);
-
-  const handleStart = () => {
+  const handleStartGame = useCallback(() => {
+    setGameStarted(true);
+    setGameOver(false);
     startGame();
-  };
+    playSound('start');
+  }, [startGame, playSound]);
 
-  const handlePause = () => {
-    setGameState('paused');
-  };
+  const handleEnemyHit = useCallback(() => {
+    pauseGame();
+    const randomQuestion = physicsQuestions[Math.floor(Math.random() * physicsQuestions.length)];
+    setCurrentQuestion(randomQuestion);
+    setShowQuiz(true);
+    playSound('hit');
+  }, [pauseGame, playSound]);
 
-  const handleResume = () => {
-    setGameState('playing');
-  };
-
-  const handleQuizSubmit = (answer: string) => {
-    const question = currentQuestion;
-    if (question) {
-      const isCorrect = question.type === 'calculation' 
-        ? Math.abs(parseFloat(answer) - parseFloat(question.correctAnswer)) <= (question.tolerance || 0)
-        : answer === question.correctAnswer;
-      
-      if (!isCorrect) {
-        setSoundTriggers(prev => ({ ...prev, wrong: true }));
-        setTimeout(() => setSoundTriggers(prev => ({ ...prev, wrong: false })), 100);
-      }
+  const handleAnswer = useCallback((correct: boolean) => {
+    setShowQuiz(false);
+    setCurrentQuestion(null);
+    
+    if (correct) {
+      updateScore(100);
+      playSound('correct');
+    } else {
+      updateScore(-25);
+      playSound('wrong');
     }
-    handleQuizAnswer(answer);
-  };
+    
+    resumeGame();
+  }, [updateScore, resumeGame, playSound]);
+
+  const handlePlayerHit = useCallback(() => {
+    loseLife();
+    playSound('damage');
+    
+    if (gameState.lives <= 1) {
+      setGameOver(true);
+      playSound('gameover');
+    }
+  }, [loseLife, gameState.lives, playSound]);
+
+  const handleLevelComplete = useCallback(() => {
+    levelUp();
+    playSound('levelup');
+  }, [levelUp, playSound]);
+
+  const handleRestart = useCallback(() => {
+    setGameOver(false);
+    setGameStarted(true);
+    startGame();
+    playSound('start');
+  }, [startGame, playSound]);
+
+  // Keyboard controls
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && gameStarted && !showQuiz && !gameOver) {
+        if (gameState.isPaused) {
+          resumeGame();
+        } else {
+          pauseGame();
+        }
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [gameStarted, showQuiz, gameOver, gameState.isPaused, pauseGame, resumeGame]);
+
+  if (!gameStarted) {
+    return <StartScreen onStart={handleStartGame} />;
+  }
+
+  if (gameOver) {
+    return (
+      <GameOverScreen 
+        score={gameState.score} 
+        level={gameState.level}
+        onRestart={handleRestart}
+      />
+    );
+  }
 
   return (
-    <div className="min-h-screen bg-slate-950 text-white flex flex-col items-center justify-center p-4">
-      {/* Sound Effects */}
-      <SoundEffects
-        playShoot={soundTriggers.shoot}
-        playExplosion={soundTriggers.explosion}
-        playCorrect={soundTriggers.correct}
-        playWrong={soundTriggers.wrong}
-        playLevelUp={soundTriggers.levelUp}
-      />
-
-      {/* Header */}
-      <header className="mb-6 text-center">
-        <h1 className="text-4xl md:text-5xl font-bold bg-gradient-to-r from-cyan-400 via-purple-400 to-pink-400 bg-clip-text text-transparent">
-          WAVE INVADERS
-        </h1>
-        <p className="text-slate-400 mt-2">Master Physics, Save the Galaxy!</p>
-      </header>
-
-      {/* Main Game Area */}
-      <div className="w-full max-w-4xl">
-        {gameState === 'menu' && (
-          <MenuScreen onStart={handleStart} />
-        )}
-
-        {(gameState === 'playing' || gameState === 'paused') && (
-          <div className="space-y-4">
-            <GameUI 
-              stats={stats}
-              gameState={gameState}
-              onStart={handleStart}
-              onPause={handlePause}
-              onResume={handleResume}
-            />
-            
-            <div className="flex justify-center">
-              <GameCanvas
-                player={player}
-                bullets={bullets}
-                invaders={invaders}
-                particles={particles}
-                enemyBullets={enemyBullets}
-                gameWidth={gameWidth}
-                gameHeight={gameHeight}
-              />
-            </div>
-            
-            {gameState === 'paused' && (
-              <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-40">
-                <div className="bg-slate-900 border-2 border-cyan-500 rounded-lg p-8 text-center">
-                  <h2 className="text-3xl font-bold text-cyan-400 mb-4">PAUSED</h2>
-                  <button
-                    onClick={handleResume}
-                    className="px-6 py-3 bg-cyan-600 hover:bg-cyan-500 rounded-lg font-bold"
-                  >
-                    Resume Game
-                  </button>
-                </div>
-              </div>
-            )}
+    <div className="relative w-full h-screen bg-black overflow-hidden">
+      {/* HUD */}
+      <div className="absolute top-0 left-0 right-0 z-10 flex justify-between items-center p-4 bg-gradient-to-b from-black/80 to-transparent">
+        <div className="flex gap-6">
+          <div className="text-white">
+            <span className="text-cyan-400 font-bold">Score:</span>
+            <span className="ml-2 text-xl font-mono">{gameState.score}</span>
           </div>
-        )}
-
-        {gameState === 'quiz' && currentQuestion && (
-          <>
-            <GameUI 
-              stats={stats}
-              gameState={gameState}
-              onStart={handleStart}
-              onPause={handlePause}
-              onResume={handleResume}
-            />
-            <div className="flex justify-center mt-4">
-              <GameCanvas
-                player={player}
-                bullets={bullets}
-                invaders={invaders}
-                particles={particles}
-                enemyBullets={enemyBullets}
-                gameWidth={gameWidth}
-                gameHeight={gameHeight}
-              />
-            </div>
-            <QuizModal 
-              question={currentQuestion}
-              onAnswer={handleQuizSubmit}
-            />
-          </>
-        )}
-
-        {gameState === 'gameOver' && (
-          <GameOverScreen 
-            stats={stats}
-            onRestart={handleStart}
-            isVictory={false}
-          />
-        )}
-
-        {gameState === 'victory' && (
-          <GameOverScreen 
-            stats={stats}
-            onRestart={handleStart}
-            isVictory={true}
-          />
-        )}
+          <div className="text-white">
+            <span className="text-green-400 font-bold">Level:</span>
+            <span className="ml-2 text-xl font-mono">{gameState.level}</span>
+          </div>
+        </div>
+        <div className="flex items-center gap-2">
+          <span className="text-red-400 font-bold">Lives:</span>
+          <div className="flex gap-1">
+            {Array.from({ length: gameState.lives }).map((_, i) => (
+              <div key={i} className="w-6 h-6 bg-red-500 rounded-full animate-pulse" />
+            ))}
+          </div>
+        </div>
       </div>
 
-      {/* Instructions Footer */}
-      <footer className="mt-8 text-center text-slate-500 text-sm">
-        <p>Use Arrow Keys or A/D to move • Press SPACE to shoot • Answer questions to score!</p>
-        <p className="mt-2">Questions based on H2 Physics Waves syllabus</p>
-      </footer>
+      {/* Pause Overlay */}
+      {gameState.isPaused && !showQuiz && (
+        <div className="absolute inset-0 z-20 flex items-center justify-center bg-black/70">
+          <div className="text-center">
+            <h2 className="text-4xl font-bold text-white mb-4">PAUSED</h2>
+            <p className="text-gray-300">Press ESC to resume</p>
+          </div>
+        </div>
+      )}
+
+      {/* Game Canvas */}
+      <GameCanvas 
+        isPaused={gameState.isPaused || showQuiz}
+        level={gameState.level}
+        onEnemyHit={handleEnemyHit}
+        onPlayerHit={handlePlayerHit}
+        onLevelComplete={handleLevelComplete}
+      />
+
+      {/* Quiz Modal */}
+      {showQuiz && currentQuestion && (
+        <QuizModal 
+          question={currentQuestion}
+          onAnswer={handleAnswer}
+        />
+      )}
     </div>
   );
 }

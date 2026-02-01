@@ -8,63 +8,60 @@ export interface Size {
   height: number;
 }
 
-export interface Velocity {
-  dx: number;
-  dy: number;
+export interface GameEntity extends Position, Size {
+  id: string;
+  velocity: { x: number; y: number };
 }
 
-export interface Player {
-  position: Position;
-  size: Size;
-  velocity: Velocity;
+export interface Player extends GameEntity {
+  type: 'player';
+  lives: number;
+}
+
+export interface Enemy extends GameEntity {
+  type: 'enemy';
   color: string;
+  points: number;
 }
 
-export interface Bullet {
-  id: string;
-  position: Position;
-  size: Size;
-  velocity: Velocity;
-  isPlayerBullet: boolean;
+export interface Bullet extends GameEntity {
+  type: 'bullet';
+  owner: 'player' | 'enemy';
 }
 
-export interface Invader {
+export interface Particle extends Position {
   id: string;
-  position: Position;
-  size: Size;
-  velocity: Velocity;
-  type: number; // 1-5 for different shapes
-  health: number;
-  maxHealth: number;
-}
-
-export interface Particle {
-  id: string;
-  position: Position;
-  velocity: Velocity;
-  size: number;
-  color: string;
+  vx: number;
+  vy: number;
   life: number;
   maxLife: number;
+  color: string;
+  size: number;
 }
 
 export interface Question {
   id: number;
   question: string;
-  type: 'mcq' | 'calculation';
-  options?: string[];
-  correctAnswer: string;
-  tolerance?: number; // For numerical answers
+  options: string[];
+  correctAnswer: number;
   explanation: string;
+  difficulty: 'easy' | 'medium' | 'hard';
+  topic: string;
 }
 
-export type GameState = 'menu' | 'playing' | 'paused' | 'quiz' | 'gameOver' | 'victory';
-
-export interface GameStats {
+export interface GameState {
   score: number;
-  level: number;
   lives: number;
-  enemiesDestroyed: number;
-  questionsAnswered: number;
-  correctAnswers: number;
+  level: number;
+  isPaused: boolean;
+  isPlaying: boolean;
 }
+
+export type GameAction = 
+  | { type: 'START_GAME' }
+  | { type: 'PAUSE_GAME' }
+  | { type: 'RESUME_GAME' }
+  | { type: 'END_GAME' }
+  | { type: 'UPDATE_SCORE'; payload: number }
+  | { type: 'LOSE_LIFE' }
+  | { type: 'LEVEL_UP' };
